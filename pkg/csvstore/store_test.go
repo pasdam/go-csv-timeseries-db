@@ -7,6 +7,37 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNewStore(t *testing.T) {
+	type args struct {
+		dir string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Should create instance with specified folder",
+			args: args{
+				dir: "some-folder",
+			},
+		},
+		{
+			name: "Should create instance with another folder",
+			args: args{
+				dir: "some-other-folder",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewStore(tt.args.dir)
+
+			assert.Equal(t, tt.args.dir, got.dir)
+			assert.Equal(t, uint64(100), got.index.interval)
+		})
+	}
+}
+
 func TestStore_LoadPoints(t *testing.T) {
 	type mocks struct {
 		handlerErr error
