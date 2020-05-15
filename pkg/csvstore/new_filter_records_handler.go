@@ -1,18 +1,9 @@
 package csvstore
 
-import (
-	"strconv"
-)
-
-func newFilterRecordsHandler(from uint64, to uint64, handler func(uint64, []string) error) func([]string) error {
-	return func(record []string) error {
-		timestamp, err := strconv.ParseUint(record[0], 10, 64)
-		if err != nil {
-			return err
-		}
-
+func newFilterRecordsHandler(from uint64, to uint64, handler func(uint64, []string) error) func(uint64, []string) error {
+	return func(timestamp uint64, record []string) error {
 		if from <= timestamp && timestamp <= to {
-			return handler(timestamp, record[1:])
+			return handler(timestamp, record)
 		}
 
 		return nil

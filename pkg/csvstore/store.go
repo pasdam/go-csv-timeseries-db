@@ -25,11 +25,9 @@ func NewStore(dir string) *Store {
 // The parameter pointHandler is called for each record, and will receive the
 // its timestamp and the remaining columns as string.
 func (s *Store) LoadPoints(from uint64, to uint64, pointHandler func(uint64, []string) error) error {
-	datasetNames := s.index.findDatasets(from, to)
+	handler := newTimestampHandler(newFilterRecordsHandler(from, to, pointHandler))
 
-	handler := newFilterRecordsHandler(from, to, pointHandler)
-
-	for _, name := range datasetNames {
+	for _, name := range s.index.findDatasets(from, to) {
 		err := readRecords(filepath.Join(s.dir, name), handler)
 		if err != nil {
 			return err

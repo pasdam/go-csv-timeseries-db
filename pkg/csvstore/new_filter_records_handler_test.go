@@ -31,7 +31,8 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 				to:   100,
 			},
 			handlerArgs: handlerArgs{
-				record: []string{"9", "some-less-than-from-value"},
+				timestamp: 9,
+				record:    []string{"some-less-than-from--col-0-value", "some-less-than-from--col-1-value"},
 			},
 			shouldCallNext: false,
 		},
@@ -42,7 +43,7 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 				to:   1000,
 			},
 			handlerArgs: handlerArgs{
-				record: []string{"1001", "some-greater-than-to-value"},
+				record: []string{"some-greater-than-to--col-0-value", "some-greater-than-to--col-1-value"},
 			},
 			shouldCallNext: false,
 		},
@@ -54,7 +55,7 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 			},
 			handlerArgs: handlerArgs{
 				timestamp: 20,
-				record:    []string{"20", "some-equal-to-from-value"},
+				record:    []string{"some-equal-to-from--col-0-value", "some-equal-to-from--col-1-value"},
 			},
 			shouldCallNext: true,
 		},
@@ -66,7 +67,7 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 			},
 			handlerArgs: handlerArgs{
 				timestamp: 500,
-				record:    []string{"500", "some-equal-to-to-value"},
+				record:    []string{"some-equal-to-to--col-0-value", "some-equal-to-to--col-1-value"},
 			},
 			shouldCallNext: true,
 		},
@@ -78,7 +79,7 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 			},
 			handlerArgs: handlerArgs{
 				timestamp: 3000,
-				record:    []string{"3000", "some-in-between-value"},
+				record:    []string{"some-in-between--col-0-value", "some-in-between--col-1-value"},
 			},
 			shouldCallNext: true,
 		},
@@ -90,23 +91,11 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 			},
 			handlerArgs: handlerArgs{
 				timestamp: 3000,
-				record:    []string{"3000", "some-in-between-value"},
+				record:    []string{"some-in-between-col-0-value", "some-in-between-col-1-value"},
 				err:       errors.New("some-handler-error"),
 			},
 			shouldCallNext: true,
 			wantErr:        errors.New("some-handler-error"),
-		},
-		{
-			name: "Should not call next and return error if timestamp is invalid",
-			factoryArgs: factoryArgs{
-				from: 200,
-				to:   500,
-			},
-			handlerArgs: handlerArgs{
-				record: []string{"invalid-timestamp", "some-invalid-timestamp-value"},
-			},
-			shouldCallNext: false,
-			wantErr:        errors.New("strconv.ParseUint: parsing \"invalid-timestamp\": invalid syntax"),
 		},
 	}
 	for _, tt := range tests {
@@ -115,11 +104,11 @@ func Test_newFilterRecordsHandler(t *testing.T) {
 			handler := func(timestamp uint64, record []string) error {
 				called = true
 				assert.Equal(t, tt.handlerArgs.timestamp, timestamp)
-				assert.Equal(t, tt.handlerArgs.record[1:], record)
+				assert.Equal(t, tt.handlerArgs.record, record)
 				return tt.handlerArgs.err
 			}
 
-			err := newFilterRecordsHandler(tt.factoryArgs.from, tt.factoryArgs.to, handler)(tt.handlerArgs.record)
+			err := newFilterRecordsHandler(tt.factoryArgs.from, tt.factoryArgs.to, handler)(tt.handlerArgs.timestamp, tt.handlerArgs.record)
 
 			assert.Equal(t, tt.shouldCallNext, called)
 			if tt.wantErr != nil {
