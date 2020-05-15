@@ -28,11 +28,15 @@ func (s *Store) LoadPoints(from uint64, to uint64, pointHandler func(uint64, []s
 	handler := newTimestampHandler(newFilterRecordsHandler(from, to, pointHandler))
 
 	for _, name := range s.index.findDatasets(from, to) {
-		err := readRecords(filepath.Join(s.dir, name), handler)
+		err := readRecords(s.path(name), handler)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (s *Store) path(datasetName string) string {
+	return filepath.Join(s.dir, datasetName)
 }
