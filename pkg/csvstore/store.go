@@ -23,6 +23,26 @@ func NewStore(dir string) *Store {
 	}
 }
 
+// LastPoint returns the last data point in the store
+func (s *Store) LastPoint() (timestamp uint64, record []string, err error) {
+	name, err := latestDataset(s.dir)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	points := make([]*dataPoint, 0, s.index.interval)
+	handler := newTimestampHandler(newRecordsCollector(&points))
+
+	err = readRecords(s.path(name), handler)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	last := points[len(points)-1]
+
+	return last.timestamp, last.record, nil
+}
+
 // LoadPoints return all the datapoints between from and to.
 // The parameter pointHandler is called for each record, and will receive the
 // its timestamp and the remaining columns as string.

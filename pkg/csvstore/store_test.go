@@ -43,6 +43,65 @@ func TestNewStore(t *testing.T) {
 	}
 }
 
+func TestStore_LastPoint(t *testing.T) {
+	type mocks struct {
+		latestDatasetErr error
+		readRecordsErr   error
+	}
+	tests := []struct {
+		name          string
+		mocks         mocks
+		wantTimestamp uint64
+		wantRecord    []string
+	}{
+		{
+			name: "Should return error if latestDataset raises it",
+			mocks: mocks{
+				latestDatasetErr: errors.New("some-latest-dataset-error"),
+			},
+			wantTimestamp: 0,
+			wantRecord:    nil,
+		},
+		{
+			name: "Should return error if readRecords raises it",
+			mocks: mocks{
+				readRecordsErr: errors.New("some-read-records-error"),
+			},
+			wantTimestamp: 0,
+			wantRecord:    nil,
+		},
+		{
+			name:          "Should return the latest data point",
+			wantTimestamp: 30,
+			wantRecord:    []string{"some-value-at-30"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Store{
+				dir: filepath.Join("testdata", "datasets"),
+				index: index{
+					interval: 10,
+				},
+			}
+			wantErr := tt.mocks.latestDatasetErr
+			if tt.mocks.latestDatasetErr != nil {
+				mockit.MockFunc(t, latestDataset).With(s.dir).Return("", wantErr)
+			}
+			if tt.mocks.readRecordsErr != nil {
+				wantErr = tt.mocks.readRecordsErr
+				mockit.MockFunc(t, readRecords).With(filepath.Join("testdata", "datasets", "30_39.csv"), argument.Any).Return(wantErr)
+			}
+
+			gotTimestamp, gotRecord, err := s.LastPoint()
+
+			assert.Equal(t, tt.wantTimestamp, gotTimestamp)
+			assert.Equal(t, tt.wantRecord, gotRecord)
+			assert.Equal(t, wantErr, err)
+		})
+	}
+}
+
 func TestStore_LoadPoints(t *testing.T) {
 	type mocks struct {
 		handlerErr error
