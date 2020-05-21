@@ -116,7 +116,7 @@ func TestStore_LoadPoints(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{
-				dir: "testdata",
+				dir: filepath.Join("testdata", "datasets"),
 				index: index{
 					interval: 10,
 				},
@@ -409,7 +409,7 @@ func TestStore_readDatasets(t *testing.T) {
 			},
 			want: []*dataset{
 				{
-					path: filepath.Join("testdata", "0_9.csv"),
+					path: filepath.Join("testdata", "datasets", "0_9.csv"),
 					points: []*dataPoint{
 						{0, []string{"something-value-at-0"}},
 						{8, []string{"something-value-at-8"}},
@@ -426,7 +426,7 @@ func TestStore_readDatasets(t *testing.T) {
 			},
 			want: []*dataset{
 				{
-					path: filepath.Join("testdata", "0_9.csv"),
+					path: filepath.Join("testdata", "datasets", "0_9.csv"),
 					points: []*dataPoint{
 						{0, []string{"something-value-at-0"}},
 						{8, []string{"something-value-at-8"}},
@@ -434,7 +434,7 @@ func TestStore_readDatasets(t *testing.T) {
 					},
 				},
 				{
-					path: filepath.Join("testdata", "10_19.csv"),
+					path: filepath.Join("testdata", "datasets", "10_19.csv"),
 					points: []*dataPoint{
 						{10, []string{"something-value-at-10"}},
 						{13, []string{"something-value-at-13"}},
@@ -446,8 +446,8 @@ func TestStore_readDatasets(t *testing.T) {
 		{
 			name: "Should return empty map if no dataset exists",
 			args: args{
-				from: 30,
-				to:   39,
+				from: 40,
+				to:   49,
 			},
 			want: make([]*dataset, 0),
 		},
@@ -464,7 +464,7 @@ func TestStore_readDatasets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{
-				dir: "testdata",
+				dir: filepath.Join("testdata", "datasets"),
 				index: index{
 					interval: 10,
 				},

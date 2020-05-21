@@ -38,7 +38,7 @@ func Test_readRecords(t *testing.T) {
 		{
 			name: "Should return error if CSV is invalid",
 			args: args{
-				path: filepath.Join("testdata", "invalid.csv"),
+				path: filepath.Join("testdata", "csv", "invalid.csv"),
 			},
 			want: [][]string{
 				{"some", "invalid"},
@@ -51,7 +51,7 @@ func Test_readRecords(t *testing.T) {
 				handlerErr: errors.New("some-handler-error"),
 			},
 			args: args{
-				path: filepath.Join("testdata", "valid.csv"),
+				path: filepath.Join("testdata", "csv", "valid.csv"),
 			},
 			want: [][]string{
 				{"some", "valid"},
@@ -61,7 +61,7 @@ func Test_readRecords(t *testing.T) {
 		{
 			name: "Should read records from valid CSV",
 			args: args{
-				path: filepath.Join("testdata", "valid.csv"),
+				path: filepath.Join("testdata", "csv", "valid.csv"),
 			},
 			want: [][]string{
 				{"some", "valid"},
