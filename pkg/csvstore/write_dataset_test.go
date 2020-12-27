@@ -5,12 +5,11 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-	"reflect"
+	"path/filepath"
 	"testing"
 
-	"bou.ke/monkey"
-
 	"github.com/pasdam/go-files-test/pkg/filestest"
+	"github.com/pasdam/mockit/matchers/argument"
 	"github.com/pasdam/mockit/mockit"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,6 +17,8 @@ import (
 func Test_writeDataset(t *testing.T) {
 	type mocks struct {
 		fileContent string
+		statErr     error
+		mkdirErr    error
 		createErr   error
 		writeErr    error
 	}
@@ -30,6 +31,28 @@ func Test_writeDataset(t *testing.T) {
 		args            args
 		expectedContent string
 	}{
+		{
+			name: "Should return error if os.Stat raises it",
+			mocks: mocks{
+				statErr: errors.New("some-stat-error"),
+			},
+			args: args{
+				ds: &dataset{
+					path: filestest.TempFile(t, "some-stat-error-path"),
+				},
+			},
+		},
+		{
+			name: "Should return error if os.MkdirAll raises it",
+			mocks: mocks{
+				mkdirErr: errors.New("some-mkdirall-error"),
+			},
+			args: args{
+				ds: &dataset{
+					path: filepath.Join(filestest.TempDir(t), "some-parent-0", "some-parent-1", "some-file"),
+				},
+			},
+		},
 		{
 			name: "Should return error if os.Create raises it",
 			mocks: mocks{
@@ -56,10 +79,10 @@ func Test_writeDataset(t *testing.T) {
 			},
 		},
 		{
-			name: "Should create file if it does not exist",
+			name: "Should create file and parent folders if it does not exist",
 			args: args{
 				ds: &dataset{
-					path: filestest.TempFile(t, "some-new-file-path"),
+					path: filepath.Join(filestest.TempDir(t), "some-parent-0", "some-parent-1", "some-file"),
 					points: dataPointList{
 						{timestamp: 0, record: []string{"some-new-file-value-at-0"}},
 					},
@@ -85,17 +108,23 @@ func Test_writeDataset(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wantErr := tt.mocks.createErr
+			var wantErr error
+			if tt.mocks.statErr != nil {
+				wantErr = tt.mocks.statErr
+				mockit.MockFunc(t, os.Stat).With(filepath.Dir(tt.args.ds.path)).Return(nil, wantErr)
+			}
+			if tt.mocks.mkdirErr != nil {
+				wantErr = tt.mocks.mkdirErr
+				mockit.MockFunc(t, os.MkdirAll).With(filepath.Dir(tt.args.ds.path), os.ModePerm).Return(wantErr)
+			}
 			if tt.mocks.createErr != nil {
+				wantErr = tt.mocks.createErr
 				mockit.MockFunc(t, os.Create).With(tt.args.ds.path).Return(nil, wantErr)
 			}
-			var guard *monkey.PatchGuard
 			if tt.mocks.writeErr != nil {
 				wantErr = tt.mocks.writeErr
 				var writer *csv.Writer
-				guard = monkey.PatchInstanceMethod(reflect.TypeOf(writer), "Write", func(w *csv.Writer, record []string) error {
-					return wantErr
-				})
+				mockit.MockMethodForAll(t, writer, writer.Write).With(argument.Any).Return(wantErr)
 			}
 			if wantErr == nil {
 				if len(tt.mocks.fileContent) > 0 {
@@ -106,12 +135,10 @@ func Test_writeDataset(t *testing.T) {
 
 			err := writeDataset(tt.args.ds)
 
-			if guard != nil {
-				guard.Unpatch()
-			}
-
 			assert.Equal(t, wantErr, err)
-			filestest.FileExistsWithContent(t, tt.args.ds.path, tt.expectedContent)
+			if len(tt.expectedContent) > 0 {
+				filestest.FileExistsWithContent(t, tt.args.ds.path, tt.expectedContent)
+			}
 		})
 	}
 }

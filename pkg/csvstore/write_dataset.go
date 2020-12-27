@@ -3,10 +3,25 @@ package csvstore
 import (
 	"encoding/csv"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
 func writeDataset(ds *dataset) error {
+	parent := filepath.Dir(ds.path)
+	_, err := os.Stat(parent)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// create
+			err = os.MkdirAll(parent, os.ModePerm)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
 	file, err := os.Create(ds.path)
 	if err != nil {
 		return err
