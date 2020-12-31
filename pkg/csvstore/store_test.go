@@ -14,16 +14,25 @@ import (
 
 func TestNewStore(t *testing.T) {
 	type args struct {
-		dir string
+		dir      string
+		interval uint64
 	}
 	tests := []struct {
 		name string
 		args args
 	}{
 		{
-			name: "Should create instance with specified folder",
+			name: "Should create instance with specified parameters",
 			args: args{
-				dir: "some-folder",
+				dir:      "some-folder",
+				interval: 10,
+			},
+		},
+		{
+			name: "Should create instance with some other parameters",
+			args: args{
+				dir:      "some-other-folder",
+				interval: 30,
 			},
 		},
 		{
@@ -35,10 +44,10 @@ func TestNewStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewStore(tt.args.dir)
+			got := NewStore(tt.args.dir, tt.args.interval)
 
 			assert.Equal(t, tt.args.dir, got.dir)
-			assert.Equal(t, uint64(100), got.index.interval)
+			assert.Equal(t, tt.args.interval, got.index.interval)
 		})
 	}
 }

@@ -13,12 +13,13 @@ type Store struct {
 }
 
 // NewStore creates a new instance of a Store that saves/loads CSV to/from the
-// specified folder
-func NewStore(dir string) *Store {
+// specified folder, the whole dataset will be split into subset of interval
+// size
+func NewStore(dir string, interval uint64) *Store {
 	return &Store{
 		dir: dir,
 		index: index{
-			interval: 100,
+			interval: interval,
 		},
 	}
 }
