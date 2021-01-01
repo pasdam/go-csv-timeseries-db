@@ -108,6 +108,8 @@ func (s *Store) readDatasets(from uint64, to uint64) (map[uint64]*dataset, error
 	datasets := make(map[uint64]*dataset)
 
 	for i := 0; i < len(datasetNames); i++ {
+		from, _, _ := parseDatasetName(datasetNames[i])
+
 		path := s.path(datasetNames[i])
 
 		_, err := os.Stat(path)
@@ -128,7 +130,7 @@ func (s *Store) readDatasets(from uint64, to uint64) (map[uint64]*dataset, error
 		}
 
 		d.points = points
-		datasets[d.points[0].timestamp] = d
+		datasets[from] = d
 	}
 
 	return datasets, nil

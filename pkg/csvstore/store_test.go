@@ -4,9 +4,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pasdam/go-files-test/pkg/filestest"
+	"github.com/pasdam/go-io-utilx/pkg/ioutilx"
 	"github.com/pasdam/mockit/matchers/argument"
 	"github.com/pasdam/mockit/mockit"
 	"github.com/stretchr/testify/assert"
@@ -146,7 +148,7 @@ func TestStore_LoadPoints(t *testing.T) {
 				to:   19,
 			},
 			want: [][]interface{}{
-				{uint64(10), []string{"something-value-at-10"}},
+				{uint64(11), []string{"something-value-at-11"}},
 				{uint64(13), []string{"something-value-at-13"}},
 				{uint64(19), []string{"something-value-at-19"}},
 			},
@@ -161,7 +163,7 @@ func TestStore_LoadPoints(t *testing.T) {
 			want: [][]interface{}{
 				{uint64(8), []string{"something-value-at-8"}},
 				{uint64(9), []string{"something-value-at-9"}},
-				{uint64(10), []string{"something-value-at-10"}},
+				{uint64(11), []string{"something-value-at-11"}},
 				{uint64(13), []string{"something-value-at-13"}},
 			},
 			wantErr: nil,
@@ -208,8 +210,10 @@ func TestStore_LoadPoints(t *testing.T) {
 
 func TestStore_StorePoints(t *testing.T) {
 	type mocks struct {
-		readErr  error
-		writeErr error
+		readErr        error
+		writeErr       error
+		datasetName    string
+		datasetContent string
 	}
 	type file struct {
 		path    string
@@ -269,6 +273,25 @@ func TestStore_StorePoints(t *testing.T) {
 				{path: "10_19.csv", content: "10,some-value-at-10\n15,some-value-at-15\n19,some-value-at-19\n"},
 			},
 		},
+		{
+			name: "Should merge points with existing dataset",
+			mocks: mocks{
+				datasetName:    "0_9.csv",
+				datasetContent: "1,some-value-at-1\n3,some-value-at-3\n7,some-value-at-7\n",
+			},
+			args: args{
+				points: &mockTimeSeries{
+					points: []*dataPoint{
+						{timestamp: 9, record: []string{"some-value-at-9"}},
+						{timestamp: 5, record: []string{"some-value-at-5"}},
+						{timestamp: 0, record: []string{"some-value-at-0"}},
+					},
+				},
+			},
+			want: []file{
+				{path: "0_9.csv", content: "0,some-value-at-0\n1,some-value-at-1\n3,some-value-at-3\n5,some-value-at-5\n7,some-value-at-7\n9,some-value-at-9\n"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -281,9 +304,14 @@ func TestStore_StorePoints(t *testing.T) {
 				wantErr = tt.mocks.writeErr
 				mockit.MockFunc(t, writeDatasets).With(argument.Any).Return(wantErr)
 			}
+			dir := filestest.TempDir(t)
+			if len(tt.mocks.datasetName) > 0 {
+				reader := strings.NewReader(tt.mocks.datasetContent)
+				ioutilx.ReaderToFile(reader, filepath.Join(dir, tt.mocks.datasetName))
+			}
 
 			s := &Store{
-				dir:   filestest.TempDir(t),
+				dir:   dir,
 				index: index{interval: 10},
 			}
 
@@ -463,10 +491,14 @@ func TestStore_readDatasets(t *testing.T) {
 		from uint64
 		to   uint64
 	}
+	type wantDs struct {
+		ds  dataset
+		key uint64
+	}
 	tests := []struct {
 		name    string
 		args    args
-		want    []*dataset
+		want    []wantDs
 		wantErr error
 	}{
 		{
@@ -475,14 +507,37 @@ func TestStore_readDatasets(t *testing.T) {
 				from: 0,
 				to:   9,
 			},
-			want: []*dataset{
+			want: []wantDs{
 				{
-					path: filepath.Join("testdata", "datasets", "0_9.csv"),
-					points: []*dataPoint{
-						{0, []string{"something-value-at-0"}},
-						{8, []string{"something-value-at-8"}},
-						{9, []string{"something-value-at-9"}},
+					ds: dataset{
+						path: filepath.Join("testdata", "datasets", "0_9.csv"),
+						points: []*dataPoint{
+							{0, []string{"something-value-at-0"}},
+							{8, []string{"something-value-at-8"}},
+							{9, []string{"something-value-at-9"}},
+						},
 					},
+					key: 0,
+				},
+			},
+		},
+		{
+			name: "Should load one dataset with no sample for the first timestamp",
+			args: args{
+				from: 13,
+				to:   17,
+			},
+			want: []wantDs{
+				{
+					ds: dataset{
+						path: filepath.Join("testdata", "datasets", "10_19.csv"),
+						points: []*dataPoint{
+							{11, []string{"something-value-at-11"}},
+							{13, []string{"something-value-at-13"}},
+							{19, []string{"something-value-at-19"}},
+						},
+					},
+					key: 10,
 				},
 			},
 		},
@@ -492,22 +547,28 @@ func TestStore_readDatasets(t *testing.T) {
 				from: 0,
 				to:   19,
 			},
-			want: []*dataset{
+			want: []wantDs{
 				{
-					path: filepath.Join("testdata", "datasets", "0_9.csv"),
-					points: []*dataPoint{
-						{0, []string{"something-value-at-0"}},
-						{8, []string{"something-value-at-8"}},
-						{9, []string{"something-value-at-9"}},
+					ds: dataset{
+						path: filepath.Join("testdata", "datasets", "0_9.csv"),
+						points: []*dataPoint{
+							{0, []string{"something-value-at-0"}},
+							{8, []string{"something-value-at-8"}},
+							{9, []string{"something-value-at-9"}},
+						},
 					},
+					key: 0,
 				},
 				{
-					path: filepath.Join("testdata", "datasets", "10_19.csv"),
-					points: []*dataPoint{
-						{10, []string{"something-value-at-10"}},
-						{13, []string{"something-value-at-13"}},
-						{19, []string{"something-value-at-19"}},
+					ds: dataset{
+						path: filepath.Join("testdata", "datasets", "10_19.csv"),
+						points: []*dataPoint{
+							{11, []string{"something-value-at-11"}},
+							{13, []string{"something-value-at-13"}},
+							{19, []string{"something-value-at-19"}},
+						},
 					},
+					key: 10,
 				},
 			},
 		},
@@ -517,7 +578,7 @@ func TestStore_readDatasets(t *testing.T) {
 				from: 40,
 				to:   49,
 			},
-			want: make([]*dataset, 0),
+			want: make([]wantDs, 0),
 		},
 		{
 			name: "Should return error if readRecords raises it",
@@ -548,7 +609,7 @@ func TestStore_readDatasets(t *testing.T) {
 			}
 			assert.Equal(t, len(tt.want), len(got))
 			for _, d := range tt.want {
-				assert.Equal(t, d, got[d.points[0].timestamp])
+				assert.Equal(t, &d.ds, got[d.key])
 			}
 		})
 	}
