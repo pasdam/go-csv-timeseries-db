@@ -2,6 +2,7 @@ package csvstore
 
 import (
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,18 +56,25 @@ func TestNewStore(t *testing.T) {
 }
 
 func TestStore_LastPoint(t *testing.T) {
+	type field struct {
+		datasetDir string
+	}
 	type mocks struct {
 		latestDatasetErr error
 		readRecordsErr   error
 	}
 	tests := []struct {
 		name          string
+		field         field
 		mocks         mocks
 		wantTimestamp uint64
 		wantRecord    []string
 	}{
 		{
 			name: "Should return error if latestDataset raises it",
+			field: field{
+				datasetDir: "small_interval",
+			},
 			mocks: mocks{
 				latestDatasetErr: errors.New("some-latest-dataset-error"),
 			},
@@ -75,6 +83,9 @@ func TestStore_LastPoint(t *testing.T) {
 		},
 		{
 			name: "Should return error if readRecords raises it",
+			field: field{
+				datasetDir: "small_interval",
+			},
 			mocks: mocks{
 				readRecordsErr: errors.New("some-read-records-error"),
 			},
@@ -82,7 +93,18 @@ func TestStore_LastPoint(t *testing.T) {
 			wantRecord:    nil,
 		},
 		{
-			name:          "Should return the latest data point",
+			name: "Should return nil if there's no point",
+			field: field{
+				datasetDir: "empty",
+			},
+			wantTimestamp: 0,
+			wantRecord:    nil,
+		},
+		{
+			name: "Should return the latest data point",
+			field: field{
+				datasetDir: "small_interval",
+			},
 			wantTimestamp: 30,
 			wantRecord:    []string{"some-value-at-30"},
 		},
@@ -90,7 +112,7 @@ func TestStore_LastPoint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{
-				dir: filepath.Join("testdata", "datasets"),
+				dir: filepath.Join("testdata", "datasets", tt.field.datasetDir),
 				index: index{
 					interval: 10,
 				},
@@ -101,7 +123,7 @@ func TestStore_LastPoint(t *testing.T) {
 			}
 			if tt.mocks.readRecordsErr != nil {
 				wantErr = tt.mocks.readRecordsErr
-				mockit.MockFunc(t, readRecords).With(filepath.Join("testdata", "datasets", "30_39.csv"), argument.Any).Return(wantErr)
+				mockit.MockFunc(t, readRecords).With(filepath.Join(s.dir, "30_39.csv"), argument.Any).Return(wantErr)
 			}
 
 			gotTimestamp, gotRecord, err := s.LastPoint()
@@ -186,7 +208,7 @@ func TestStore_LoadPoints(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{
-				dir: filepath.Join("testdata", "datasets"),
+				dir: filepath.Join("testdata", "datasets", "small_interval"),
 				index: index{
 					interval: 10,
 				},
@@ -487,6 +509,10 @@ func TestStore_merge(t *testing.T) {
 }
 
 func TestStore_readDatasets(t *testing.T) {
+	type fields struct {
+		dir      string
+		interval uint64
+	}
 	type args struct {
 		from uint64
 		to   uint64
@@ -497,12 +523,17 @@ func TestStore_readDatasets(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
+		fields  fields
 		args    args
 		want    []wantDs
 		wantErr error
 	}{
 		{
 			name: "Should load one dataset",
+			fields: fields{
+				dir:      "small_interval",
+				interval: 10,
+			},
 			args: args{
 				from: 0,
 				to:   9,
@@ -510,7 +541,7 @@ func TestStore_readDatasets(t *testing.T) {
 			want: []wantDs{
 				{
 					ds: dataset{
-						path: filepath.Join("testdata", "datasets", "0_9.csv"),
+						path: filepath.Join("testdata", "datasets", "small_interval", "0_9.csv"),
 						points: []*dataPoint{
 							{0, []string{"something-value-at-0"}},
 							{8, []string{"something-value-at-8"}},
@@ -523,6 +554,10 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should load one dataset with no sample for the first timestamp",
+			fields: fields{
+				dir:      "small_interval",
+				interval: 10,
+			},
 			args: args{
 				from: 13,
 				to:   17,
@@ -530,7 +565,7 @@ func TestStore_readDatasets(t *testing.T) {
 			want: []wantDs{
 				{
 					ds: dataset{
-						path: filepath.Join("testdata", "datasets", "10_19.csv"),
+						path: filepath.Join("testdata", "datasets", "small_interval", "10_19.csv"),
 						points: []*dataPoint{
 							{11, []string{"something-value-at-11"}},
 							{13, []string{"something-value-at-13"}},
@@ -543,6 +578,10 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should load two dataset",
+			fields: fields{
+				dir:      "small_interval",
+				interval: 10,
+			},
 			args: args{
 				from: 0,
 				to:   19,
@@ -550,7 +589,7 @@ func TestStore_readDatasets(t *testing.T) {
 			want: []wantDs{
 				{
 					ds: dataset{
-						path: filepath.Join("testdata", "datasets", "0_9.csv"),
+						path: filepath.Join("testdata", "datasets", "small_interval", "0_9.csv"),
 						points: []*dataPoint{
 							{0, []string{"something-value-at-0"}},
 							{8, []string{"something-value-at-8"}},
@@ -561,7 +600,7 @@ func TestStore_readDatasets(t *testing.T) {
 				},
 				{
 					ds: dataset{
-						path: filepath.Join("testdata", "datasets", "10_19.csv"),
+						path: filepath.Join("testdata", "datasets", "small_interval", "10_19.csv"),
 						points: []*dataPoint{
 							{11, []string{"something-value-at-11"}},
 							{13, []string{"something-value-at-13"}},
@@ -574,6 +613,10 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should return empty map if no dataset exists",
+			fields: fields{
+				dir:      "small_interval",
+				interval: 10,
+			},
 			args: args{
 				from: 40,
 				to:   49,
@@ -582,6 +625,10 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should return error if readRecords raises it",
+			fields: fields{
+				dir:      "small_interval",
+				interval: 10,
+			},
 			args: args{
 				from: 0,
 				to:   29,
@@ -589,13 +636,34 @@ func TestStore_readDatasets(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("strconv.ParseUint: parsing \"invalid-record\": invalid syntax"),
 		},
+		{
+			name: "Should not raise error if the interval is greater than maxInt64",
+			fields: fields{
+				dir:      "large_interval",
+				interval: math.MaxInt64 + 1,
+			},
+			args: args{
+				from: 0,
+				to:   math.MaxInt64,
+			},
+			want: []wantDs{
+				{
+					ds: dataset{
+						path:   filepath.Join("testdata", "datasets", "large_interval", "0_9223372036854775807.csv"),
+						points: []*dataPoint{},
+					},
+					key: 0,
+				},
+			},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{
-				dir: filepath.Join("testdata", "datasets"),
+				dir: filepath.Join("testdata", "datasets", tt.fields.dir),
 				index: index{
-					interval: 10,
+					interval: tt.fields.interval,
 				},
 			}
 

@@ -21,7 +21,7 @@ func Test_latestDataset(t *testing.T) {
 		{
 			name: "Should return latest dataset in existing folder",
 			args: args{
-				dir: filepath.Join("testdata", "datasets"),
+				dir: filepath.Join("testdata", "datasets", "small_interval"),
 			},
 			want:    "30_39.csv",
 			wantErr: nil,
