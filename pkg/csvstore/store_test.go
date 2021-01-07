@@ -2,6 +2,7 @@ package csvstore
 
 import (
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -487,6 +488,9 @@ func TestStore_merge(t *testing.T) {
 }
 
 func TestStore_readDatasets(t *testing.T) {
+	type fields struct {
+		interval uint64
+	}
 	type args struct {
 		from uint64
 		to   uint64
@@ -497,12 +501,16 @@ func TestStore_readDatasets(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
+		fields  fields
 		args    args
 		want    []wantDs
 		wantErr error
 	}{
 		{
 			name: "Should load one dataset",
+			fields: fields{
+				interval: 10,
+			},
 			args: args{
 				from: 0,
 				to:   9,
@@ -523,6 +531,9 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should load one dataset with no sample for the first timestamp",
+			fields: fields{
+				interval: 10,
+			},
 			args: args{
 				from: 13,
 				to:   17,
@@ -543,6 +554,9 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should load two dataset",
+			fields: fields{
+				interval: 10,
+			},
 			args: args{
 				from: 0,
 				to:   19,
@@ -574,6 +588,9 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should return empty map if no dataset exists",
+			fields: fields{
+				interval: 10,
+			},
 			args: args{
 				from: 40,
 				to:   49,
@@ -582,6 +599,9 @@ func TestStore_readDatasets(t *testing.T) {
 		},
 		{
 			name: "Should return error if readRecords raises it",
+			fields: fields{
+				interval: 10,
+			},
 			args: args{
 				from: 0,
 				to:   29,
@@ -589,13 +609,33 @@ func TestStore_readDatasets(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("strconv.ParseUint: parsing \"invalid-record\": invalid syntax"),
 		},
+		{
+			name: "Should not raise error if the interval is greater than maxInt64",
+			fields: fields{
+				interval: math.MaxInt64 + 1,
+			},
+			args: args{
+				from: 0,
+				to:   math.MaxInt64,
+			},
+			want: []wantDs{
+				{
+					ds: dataset{
+						path:   filepath.Join("testdata", "datasets", "0_9223372036854775807.csv"),
+						points: []*dataPoint{},
+					},
+					key: 0,
+				},
+			},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Store{
 				dir: filepath.Join("testdata", "datasets"),
 				index: index{
-					interval: 10,
+					interval: tt.fields.interval,
 				},
 			}
 

@@ -107,6 +107,11 @@ func (s *Store) readDatasets(from uint64, to uint64) (map[uint64]*dataset, error
 	datasetNames := s.index.findDatasets(from, to)
 	datasets := make(map[uint64]*dataset)
 
+	maxSize := s.index.interval
+	if maxSize > 10000 {
+		maxSize = 10000
+	}
+
 	for i := 0; i < len(datasetNames); i++ {
 		from, _, _ := parseDatasetName(datasetNames[i])
 
@@ -117,7 +122,7 @@ func (s *Store) readDatasets(from uint64, to uint64) (map[uint64]*dataset, error
 			continue
 		}
 
-		points := make([]*dataPoint, 0, s.index.interval)
+		points := make([]*dataPoint, 0, maxSize)
 		d := &dataset{
 			path: path,
 		}
