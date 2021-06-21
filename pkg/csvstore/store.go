@@ -53,6 +53,9 @@ func (s *Store) LoadPoints(from uint64, to uint64, pointHandler func(uint64, []s
 	for _, name := range s.index.findDatasets(from, to) {
 		err := readRecords(s.path(name), handler)
 		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
 			return err
 		}
 	}

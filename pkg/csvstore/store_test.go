@@ -204,6 +204,15 @@ func TestStore_LoadPoints(t *testing.T) {
 			},
 			wantErr: errors.New("some-handler-error"),
 		},
+		{
+			name: "Should return empty dataset if file does not exist",
+			args: args{
+				from: 40,
+				to:   43,
+			},
+			want:    [][]interface{}{},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
