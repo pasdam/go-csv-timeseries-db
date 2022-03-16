@@ -9,5 +9,5 @@ require (
 	github.com/pasdam/go-io-utilx v0.0.0-20201229215823-570b5ea4df86
 	github.com/pasdam/go-search v0.0.0-20201229215808-279b97b7d69a
 	github.com/pasdam/mockit v0.0.0-20201227180859-23356fee617b
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 )
