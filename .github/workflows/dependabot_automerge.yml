@@ -3,7 +3,7 @@ on:
   workflow_run:
     branches:
       - dependabot/go_modules/**
-      - dependabot/submodules/**
+
     types:
       - completed
     workflows:
